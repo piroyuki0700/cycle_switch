@@ -1,0 +1,20 @@
+[Unit]
+Description=Flask Control Service
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/work/cycle_switch
+ExecStart=/usr/bin/python3 /home/pi/work/cycle_switch/app.py
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=flask_control
+
+# GPIOアクセスに必要な権限
+PermissionsStartOnly=true
+ExecStartPre=/bin/sleep 10
+
+[Install]
+WantedBy=multi-user.target
