@@ -1,12 +1,13 @@
 import json
+import sys
 import threading
 import time
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
-# import RPi.GPIO as GPIO
+# import mock_gpio as GPIO
+import RPi.GPIO as GPIO
 import neopixel
 import board
-import mock_gpio as GPIO
 
 app = Flask(__name__)
 SETTINGS_FILE = "settings.json"
@@ -47,7 +48,7 @@ class Controller:
     def start(self, settings):
         with self.lock:
             if self.running:
-                self.stop()
+                self.stop_with_lock()
             self.exit_event.clear()
             self.current_settings = settings
             self.running = True
@@ -56,11 +57,14 @@ class Controller:
 
     def stop(self):
         with self.lock:
-            self.running = False
-            self.exit_event.set()
-            if self.thread and self.thread.is_alive():
-                self.thread.join(timeout=3)
-            self.stop_outputs()
+            self.stop_with_lock()
+
+    def stop_with_lock(self):
+        self.running = False
+        self.exit_event.set()
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=3)
+        self.stop_outputs()
 
     def stop_outputs(self):
         GPIO.output(OUTPUT1_PIN, GPIO.LOW)
@@ -95,9 +99,6 @@ class Controller:
             except Exception as e:
                 print(f"Control loop error: {e}")
                 break
-
-            finally:
-                update_led('none')
 
     def run_main_cycle(self, settings, start_time, end_time, night_times):
         GPIO.output(OUTPUT1_PIN, GPIO.HIGH)
@@ -198,12 +199,14 @@ def settings_api():
 
 if __name__ == "__main__":
     try:
-        initial_settings = load_settings()
-        controller.start(initial_settings)
-        app.run(host="0.0.0.0", port=5000)
+        if sys.argv[1] == 'on':
+            initial_settings = load_settings()
+            controller.start(initial_settings)
+            app.run(host="0.0.0.0", port=5000)
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
+        update_led("none")
         controller.stop()
         GPIO.cleanup()
         print("GPIO cleaned up")

@@ -134,8 +134,9 @@
     </div>
 
     <script>
+        const URL_API_SETTINGS = "http://192.168.11.10:5000/api/settings"
         const loadSettings = () => {
-            fetch("http://localhost:5000/api/settings")
+            fetch("URL_API_SETTINGS")
                 .then(response => response.json())
                 .then(settings => {
                     document.getElementById("start-time").value = settings.start_time;
@@ -169,7 +170,7 @@
                 night_cycle_times: timeInputs
             };
 
-            fetch("http://localhost:5000/api/settings", {
+            fetch(URL_API_SETTINGS, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),

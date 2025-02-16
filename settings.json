@@ -1,9 +1,9 @@
 {
     "start_time": "07:00",
     "end_time": "18:00",
-    "interval_output2_on": 3,
+    "interval_output2_on": 5,
     "interval_output3_on": 5,
-    "interval_both_off": 5,
+    "interval_both_off": 3,
     "night_cycle_times": [
         "21:00",
         "00:00",
