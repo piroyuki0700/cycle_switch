@@ -7,5 +7,5 @@ It is a part of my simple hydroponics system.
 </p>
 <p>
 Before starting it on raspberry pi device, it is needed to modify app.py to use RPi.GPIO module instead of mock_gpio.
-And then replace the server name in api urls to an appropriate server name. 
+And then replace the server name in api urls to an appropriate server name in template/index.html. 
 </p>
