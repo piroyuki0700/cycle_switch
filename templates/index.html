@@ -134,9 +134,9 @@
     </div>
 
     <script>
-        const URL_API_SETTINGS = "http://192.168.11.10:5000/api/settings"
+        const URL_API_SETTINGS = "http://192.168.11.10:5000/api/settings";
         const loadSettings = () => {
-            fetch("URL_API_SETTINGS")
+            fetch(URL_API_SETTINGS)
                 .then(response => response.json())
                 .then(settings => {
                     document.getElementById("start-time").value = settings.start_time;
