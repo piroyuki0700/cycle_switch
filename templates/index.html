@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水耕スイッチ設定</title>
+    <style>
+        body {
+            background: darkseagreen;
+        }
+        .card {
+            background: lightgreen;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            max-width: 400px;
+            margin: 2rem auto;
+            border: solid 2px seagreen;
+        }
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+        .form-group {
+            align-items: center;
+            gap: 0.5rem;
+        }
+        label {
+            color: #2c3e50;
+            font-weight: 500;
+            font-size: 0.9rem;
+            min-width: 80px;
+        }
+        input {
+            padding: 0.4rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            flex: 1;
+            max-width: 80px;
+        }
+        .night-time-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+        button {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        button[type="submit"] {
+            background: seagreen;
+            color: white;
+        }
+        button[type="submit"]:hover {
+            background: mediumturquoise;
+        }
+        #reset-btn {
+            background: slategray;
+            color: white;
+        }
+        #reset-btn:hover {
+            background: silver;
+        }
+        h1 {
+            text-align: center;
+            margin: 0 0 1.5rem 0;
+            font-size: 1.4rem;
+            color: #34495e;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>水耕スイッチ設定</h1>
+        <form id="settings-form">
+        <!-- 1つ目のform-row -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="start-time">開始時刻</label>
+                <input type="time" id="start-time" required>
+            </div>
+            <div class="form-group">
+                <label for="end-time">終了時刻</label>
+                <input type="time" id="end-time" required>
+            </div>
+        </div>
+
+        <!-- 2つ目のform-row -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="interval-output2-on">出力2 ON（分）</label>
+                <input type="number" id="interval-output2-on" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="interval-output3-on">出力3 ON（分）</label>
+                <input type="number" id="interval-output3-on" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="interval-both-off">両方OFF（分）</label>
+                <input type="number" id="interval-both-off" min="1" required>
+            </div>
+        </div>
+
+        <!-- 3つ目のform-row（夜間動作時刻） -->
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label>夜間動作時刻</label>
+                <div class="night-time-group">
+                    <input type="time" class="night-cycle-time">
+                    <input type="time" class="night-cycle-time">
+                    <input type="time" class="night-cycle-time">
+                </div>
+            </div>
+        </div>
+
+        <!-- ボタングループ -->
+        <div class="button-group">
+            <button type="submit" form="settings-form">保存</button>
+            <button type="button" id="reset-btn">リセット</button>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        const loadSettings = () => {
+            fetch("http://localhost:5000/api/settings")
+                .then(response => response.json())
+                .then(settings => {
+                    document.getElementById("start-time").value = settings.start_time;
+                    document.getElementById("end-time").value = settings.end_time;
+                    document.getElementById("interval-output2-on").value = settings.interval_output2_on;
+                    document.getElementById("interval-output3-on").value = settings.interval_output3_on;
+                    document.getElementById("interval-both-off").value = settings.interval_both_off;
+                    
+                    document.querySelectorAll('.night-cycle-time').forEach((input, index) => {
+                        input.value = settings.night_cycle_times[index] || '';
+                    });
+                });
+        };
+
+        // 初期読み込み
+        loadSettings();
+
+        // 保存処理
+        document.addEventListener('submit', e => {
+            e.preventDefault();
+            const timeInputs = Array.from(document.querySelectorAll('.night-cycle-time'))
+                .map(input => input.value)
+                .filter(v => v);
+
+            const formData = {
+                start_time: document.getElementById("start-time").value,
+                end_time: document.getElementById("end-time").value,
+                interval_output2_on: document.getElementById("interval-output2-on").value,
+                interval_output3_on: document.getElementById("interval-output3-on").value,
+                interval_both_off: document.getElementById("interval-both-off").value,
+                night_cycle_times: timeInputs
+            };
+
+            fetch("http://localhost:5000/api/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+            }).then(() => {
+                alert("設定を保存しました");
+                loadSettings();
+            });
+        });
+
+        // リセット処理
+        document.getElementById("reset-btn").addEventListener("click", () => {
+            // if(confirm("現在の変更を破棄して再読み込みしますか？")) loadSettings();
+            loadSettings();
+        });
+    </script>
+</body>
+</html>
