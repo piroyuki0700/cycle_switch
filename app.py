@@ -4,15 +4,21 @@ import time
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 # import RPi.GPIO as GPIO
+import neopixel
+import board
 import mock_gpio as GPIO
 
 app = Flask(__name__)
 SETTINGS_FILE = "settings.json"
 
 # GPIOピン設定
-OUTPUT1_PIN = 18
-OUTPUT2_PIN = 23
-OUTPUT3_PIN = 24
+OUTPUT1_PIN = 6
+OUTPUT2_PIN = 13
+OUTPUT3_PIN = 20
+OUTPUT4_PIN = 26
+
+# NeoPixelのピン設定
+NEOPIXEL_PIN = board.D18
 
 # 定数定義
 DEFAULT_SETTINGS = {
@@ -35,6 +41,7 @@ class Controller:
         GPIO.setup(OUTPUT1_PIN, GPIO.OUT)
         GPIO.setup(OUTPUT2_PIN, GPIO.OUT)
         GPIO.setup(OUTPUT3_PIN, GPIO.OUT)
+        GPIO.setup(OUTPUT4_PIN, GPIO.OUT)
         self.stop_outputs()
 
     def start(self, settings):
@@ -59,6 +66,7 @@ class Controller:
         GPIO.output(OUTPUT1_PIN, GPIO.LOW)
         GPIO.output(OUTPUT2_PIN, GPIO.LOW)
         GPIO.output(OUTPUT3_PIN, GPIO.LOW)
+        GPIO.output(OUTPUT4_PIN, GPIO.LOW)
 
     def parse_time(self, time_str):
         return datetime.strptime(time_str, "%H:%M").time()
@@ -75,8 +83,10 @@ class Controller:
 
                 # メイン制御
                 if (start_time <= now <= end_time) or (now in night_times):
+                    update_led('green')
                     self.run_main_cycle(settings, start_time, end_time, night_times)
                 else:
+                    update_led('blue')
                     self.stop_outputs()
 
                 # 中断可能なスリープ
@@ -85,6 +95,9 @@ class Controller:
             except Exception as e:
                 print(f"Control loop error: {e}")
                 break
+
+            finally:
+                update_led('none')
 
     def run_main_cycle(self, settings, start_time, end_time, night_times):
         GPIO.output(OUTPUT1_PIN, GPIO.HIGH)
@@ -105,10 +118,12 @@ class Controller:
                 break
             
             GPIO.output(OUTPUT3_PIN, GPIO.HIGH)
+            GPIO.output(OUTPUT4_PIN, GPIO.HIGH)
             if self.exit_event.wait(settings["interval_output3_on"] * 60):
                 break
             
             GPIO.output(OUTPUT3_PIN, GPIO.LOW)
+            GPIO.output(OUTPUT4_PIN, GPIO.LOW)
             if self.exit_event.wait(settings["interval_both_off"] * 60):
                 break
 
@@ -120,6 +135,28 @@ class Controller:
 
 # コントローラーの初期化
 controller = Controller()
+
+# 状態表示LED更新
+def update_led(color):
+#        logger.debug(f"called. color={color}")
+        pixels = neopixel.NeoPixel(NEOPIXEL_PIN, 1)
+        if color == 'blue':
+                pixels[0] = (0, 0, 50)
+        elif color == 'green' or color == 'success':
+                pixels[0] = (50, 0, 0)
+        elif color == 'yellow' or color == 'warning':
+                pixels[0] = (32, 32, 0)
+        elif color == 'red' or color == 'danger':
+                pixels[0] = (0, 50, 0)
+        elif color == 'cyan':
+                pixels[0] = (32, 0, 32)
+        elif color == 'magenta':
+                pixels[0] = (0, 32, 32)
+        elif color == 'white':
+                pixels[0] = (20, 20, 20)
+        else:
+                pixels[0] = (0, 0, 0)
+        return True
 
 def load_settings():
     try:
