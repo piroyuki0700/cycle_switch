@@ -2,9 +2,9 @@ import json
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
-# import mock_gpio as GPIO
+import mock_rpi
 import RPi.GPIO as GPIO
 import neopixel
 import board
@@ -76,14 +76,15 @@ class Controller:
         return datetime.strptime(time_str, "%H:%M").time()
 
     def control_loop(self):
+        settings = self.current_settings
+
+        start_time = self.parse_time(settings["start_time"])
+        end_time = self.parse_time(settings["end_time"])
+        night_times = [self.parse_time(t) for t in settings["night_cycle_times"]]
+
         while self.running and not self.exit_event.is_set():
             try:
-                now = datetime.now().time()
-                settings = self.current_settings
-
-                start_time = self.parse_time(settings["start_time"])
-                end_time = self.parse_time(settings["end_time"])
-                night_times = [self.parse_time(t) for t in settings["night_cycle_times"]]
+                now = datetime.now().time().replace(second=0, microsecond=0)
 
                 # メイン制御
                 if (start_time <= now <= end_time) or (now in night_times):
@@ -93,19 +94,24 @@ class Controller:
                     update_led('blue')
                     self.stop_outputs()
 
-                # 中断可能なスリープ
-                self.exit_event.wait(60)
+                now = datetime.now()
+                # 次の分の0秒までの秒数を計算
+                next_minute = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
+                wait_seconds = (next_minute - now).total_seconds()
 
+                # 最大60秒の待機（早期解除可能）
+                print(f"wait=${wait_seconds}")
+                self.exit_event.wait(wait_seconds)
+            
             except Exception as e:
                 print(f"Control loop error: {e}")
                 break
 
     def run_main_cycle(self, settings, start_time, end_time, night_times):
         GPIO.output(OUTPUT1_PIN, GPIO.HIGH)
-        cycle_count = 0
 
         while self.running and not self.exit_event.is_set():
-            now = datetime.now().time()
+            now = datetime.now().time().replace(second=0, microsecond=0)
             if not ((start_time <= now <= end_time) or (now in night_times)):
                 break
 
@@ -130,9 +136,9 @@ class Controller:
 
             # 夜間モードの場合は1サイクルのみ実行
             if now in night_times:
-                cycle_count += 1
-                if cycle_count >= 1:
-                    break
+                break
+
+        GPIO.output(OUTPUT1_PIN, GPIO.LOW)
 
 # コントローラーの初期化
 controller = Controller()
