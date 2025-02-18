@@ -4,10 +4,10 @@ import threading
 import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
-import mock_rpi
 import RPi.GPIO as GPIO
 import neopixel
 import board
+import mock_rpi
 
 app = Flask(__name__)
 SETTINGS_FILE = "settings.json"
@@ -90,8 +90,8 @@ class Controller:
                 if (start_time <= now <= end_time) or (now in night_times):
                     update_led('green')
                     self.run_main_cycle(settings, start_time, end_time, night_times)
-                else:
                     update_led('blue')
+                else:
                     self.stop_outputs()
 
                 now = datetime.now()
@@ -99,10 +99,9 @@ class Controller:
                 next_minute = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
                 wait_seconds = (next_minute - now).total_seconds()
 
-                # 最大60秒の待機（早期解除可能）
-                print(f"wait=${wait_seconds}")
+                # 最大1分の待機（早期解除可能）
                 self.exit_event.wait(wait_seconds)
-            
+
             except Exception as e:
                 print(f"Control loop error: {e}")
                 break
@@ -119,23 +118,20 @@ class Controller:
             GPIO.output(OUTPUT2_PIN, GPIO.HIGH)
             if self.exit_event.wait(settings["interval_output2_on"] * 60):
                 break
-            
             GPIO.output(OUTPUT2_PIN, GPIO.LOW)
-            if self.exit_event.wait(settings["interval_both_off"] * 60):
-                break
-            
+    
             GPIO.output(OUTPUT3_PIN, GPIO.HIGH)
             GPIO.output(OUTPUT4_PIN, GPIO.HIGH)
             if self.exit_event.wait(settings["interval_output3_on"] * 60):
                 break
-            
             GPIO.output(OUTPUT3_PIN, GPIO.LOW)
             GPIO.output(OUTPUT4_PIN, GPIO.LOW)
-            if self.exit_event.wait(settings["interval_both_off"] * 60):
-                break
 
             # 夜間モードの場合は1サイクルのみ実行
             if now in night_times:
+                break
+
+            if self.exit_event.wait(settings["interval_both_off"] * 60):
                 break
 
         GPIO.output(OUTPUT1_PIN, GPIO.LOW)
@@ -145,7 +141,6 @@ controller = Controller()
 
 # 状態表示LED更新
 def update_led(color):
-#        logger.debug(f"called. color={color}")
         pixels = neopixel.NeoPixel(NEOPIXEL_PIN, 1)
         if color == 'blue':
                 pixels[0] = (0, 0, 50)
