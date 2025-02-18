@@ -4,10 +4,10 @@ import threading
 import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
+import mock_rpi
 import RPi.GPIO as GPIO
 import neopixel
 import board
-import mock_rpi
 
 app = Flask(__name__)
 SETTINGS_FILE = "settings.json"

@@ -2,7 +2,9 @@ import sys
 import types
 
 # ---- Mock RPi.GPIO ----
-if "RPi" not in sys.modules:
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
     class MockGPIO:
         BOARD = "BOARD"
         BCM = "BCM"
@@ -32,7 +34,7 @@ if "RPi" not in sys.modules:
             if pin not in self.pins:
                 raise RuntimeError(f"Pin {pin} not set up.")
             print(f"MockGPIO: input({pin})")
-            return self.HIGH  # Always return HIGH
+            return 1 # self.HIGH  # Always return HIGH
 
         def cleanup(self):
             print("MockGPIO: cleanup()")
@@ -46,17 +48,20 @@ if "RPi" not in sys.modules:
     sys.modules["RPi.GPIO"] = mock_rpi.GPIO
 
 # ---- Mock board (Adafruit) ----
-if "board" not in sys.modules:
+try:
+    import board
+except ImportError:
     class MockBoard:
         D18 = "D18"
         D21 = "D21"
         SCL = "SCL"
         SDA = "SDA"
-
     sys.modules["board"] = MockBoard()
 
 # ---- Mock neopixel (Adafruit) ----
-if "neopixel" not in sys.modules:
+try:
+    import neopixel
+except ImportError:
     class MockNeoPixel:
         def __init__(self, pin, num_pixels, brightness=1.0, auto_write=True, pixel_order=None):
             self.pin = pin
