@@ -5,15 +5,34 @@ import types
 try:
     import RPi.GPIO as GPIO
 except ImportError:
+    # PWM のダミークラス
+    class PWM:
+        def __init__(self, pin, frequency):
+            self.pin = pin
+            self.frequency = frequency
+            print(f"MockGPIO: PWM.__init__({pin}, {frequency})")
+        def start(self, duty_cycle):
+            print(f"MockGPIO: PWM.start({duty_cycle})")
+        def ChangeDutyCycle(self, duty_cycle):
+            print(f"MockGPIO: PWM.ChangeDutyCycle({duty_cycle})")
+        def ChangeFrequency(self, frequency):
+            print(f"MockGPIO: PWM.ChangeFrequency({frequency})")
+        def stop(self):
+            print("MockGPIO: PWM.stop()")
+    
     class MockGPIO:
         BOARD = "BOARD"
         BCM = "BCM"
         IN = "IN"
         OUT = "OUT"
-        HIGH = "HIGH"
-        LOW = "LOW"
+        HIGH = 1
+        LOW = 0
         PUD_UP = "PUD_UP"
         PUD_DOWN = "PUD_DOWN"
+        RISING = "RISING"
+        FALLING = "FALLING"
+        BOTH = "BOTH"
+        PWM = PWM  # PWM クラスを属性として追加
 
         def __init__(self):
             self.pins = {}
@@ -28,13 +47,33 @@ except ImportError:
         def output(self, pin, state):
             if pin not in self.pins:
                 raise RuntimeError(f"Pin {pin} not set up.")
-            print(f"MockGPIO: output({pin}, {state})")
+            if state == self.HIGH:
+                state_str = "HIGH"
+            elif state == self.LOW:
+                state_str = "LOW"
+            else:
+                state_str = str(state)
+            print(f"MockGPIO: output({pin}, {state_str})")
 
         def input(self, pin):
             if pin not in self.pins:
                 raise RuntimeError(f"Pin {pin} not set up.")
             print(f"MockGPIO: input({pin})")
-            return 1 # self.HIGH  # Always return HIGH
+            return self.HIGH  # 常に HIGH を返す
+
+        def add_event_detect(self, channel, edge, callback=None, bouncetime=None):
+            print(f"MockGPIO: add_event_detect({channel}, {edge}, callback={callback}, bouncetime={bouncetime})")
+
+        def remove_event_detect(self, channel):
+            print(f"MockGPIO: remove_event_detect({channel})")
+
+        def event_detected(self, channel):
+            print(f"MockGPIO: event_detected({channel})")
+            return False
+
+        def wait_for_edge(self, channel, edge, timeout=None):
+            print(f"MockGPIO: wait_for_edge({channel}, {edge}, timeout={timeout})")
+            return channel
 
         def cleanup(self):
             print("MockGPIO: cleanup()")
@@ -69,7 +108,6 @@ except ImportError:
             self.brightness = brightness
             self.auto_write = auto_write
             self.pixels = [(0, 0, 0)] * num_pixels
-
             print(f"[Mock NeoPixel] Initialized on {pin} with {num_pixels} pixels")
 
         def show(self):
@@ -87,9 +125,8 @@ except ImportError:
 
         def fill(self, color):
             self.pixels = [color] * self.num_pixels
-            print(f"[Mock NeoPixel] Filled all pixels with {color}")
+            print(f"[Mock Neo Pixel] Filled all pixels with {color}")
 
     mock_neopixel = types.ModuleType("neopixel")
     mock_neopixel.NeoPixel = MockNeoPixel
     sys.modules["neopixel"] = mock_neopixel
-

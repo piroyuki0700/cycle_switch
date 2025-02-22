@@ -1,5 +1,5 @@
 [Unit]
-Description=Flask Control Service
+Description=Cycle Switch Control Service
 After=network.target
 
 [Service]
@@ -11,10 +11,10 @@ Restart=always
 # RestartSec=10
 StandardOutput=syslog
 StandardError=syslog
-SyslogIdentifier=flask_control
+SyslogIdentifier=cycle_switch
 
 # GPIOアクセスに必要な権限
-PermissionsStartOnly=true
+# PermissionsStartOnly=true
 # ExecStartPre=/bin/sleep 10
 
 [Install]
