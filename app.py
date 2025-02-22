@@ -9,6 +9,7 @@ import RPi.GPIO as GPIO
 import neopixel
 import board
 import logging
+import socket
 
 SETTINGS_FILE = "settings.json"
 LOG_FILE = "cycle_switch.log"
@@ -243,9 +244,22 @@ def save_settings(new_settings):
 # Flaskアプリケーション設定
 app = Flask(__name__)
 
-@app.route("/")
+# サーバーのローカルIPアドレスを取得
+def get_local_ip():
+    try:
+        # 外部に接続せずにローカルIPを取得
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))  # Google DNSを利用 (実際に接続しない)
+            return s.getsockname()[0]  # IPアドレスを取得
+    except Exception as e:
+        print(f"IPアドレス取得エラー: {e}")
+        return "127.0.0.1"
+
+# ルート：HTML画面の表示
+@app.route('/')
 def index():
-    return render_template("index.html")
+    ip_address = get_local_ip()  # サーバーのIPアドレス取得
+    return render_template('index.html', server_ip=ip_address)
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings_api():

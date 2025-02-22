@@ -215,7 +215,8 @@
     </div>
 
     <script>
-        const URL_API_BASE = "http://localhost:5000/api";
+        const URL_API_BASE = "http://{{server_ip}}:5000/api";
+
         const loadSettings = () => {
             fetch(URL_API_BASE + "/settings")
                 .then(response => response.json())
