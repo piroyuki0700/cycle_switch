@@ -9,9 +9,6 @@ ExecStart=/home/pi/.venv/bin/python3 /home/pi/work/cycle_switch/app.py on
 ExecStop=/home/pi/.venv/bin/python3 /home/pi/work/cycle_switch/app.py off
 Restart=always
 # RestartSec=10
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=cycle_switch
 
 # GPIOアクセスに必要な権限
 # PermissionsStartOnly=true
