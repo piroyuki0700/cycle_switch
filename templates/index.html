@@ -6,40 +6,112 @@
     <title>水耕スイッチ設定</title>
     <style>
         body {
-            background: darkseagreen;
+            background-color: seagreen;
         }
         .card {
-            background: lightgreen;
+            background: #f0fff8;
+            border: 1px solid #ccc;
             border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
+            padding: 20px;
+            margin: 20px auto;
+            width: 90%;
             max-width: 400px;
-            margin: 2rem auto;
-            border: solid 2px seagreen;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+            font-family: Arial, sans-serif;
+        }
+        /* タイトル */
+        .card h1 {
+            text-align: center;
+            margin: 20px;
+            font-size: 1.8rem;
+        }
+        /* セクション見出し */
+        .card h2 {
+            margin: 10px 0px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+        /* トグルスイッチ CSS */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 28px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 23px;
+            width: 23px;
+            left: 5px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: seagreen;
+        }
+        input:checked + .slider:before {
+            transform: translateX(28px);
+        }
+        /* ステータス部分の行 */
+        .status-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 20px;
         }
         .form-row {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            justify-content: space-between;
             align-items: center;
+            margin-bottom: 15px;
+        }
+        /* 制御スイッチ専用（ラベルは上段、スイッチは下段） */
+        .switch-container {
+            display: block;
+            margin-top: 5px;
         }
         .form-group {
-            align-items: center;
-            gap: 0.5rem;
+            flex: 1;
+            margin-right: 10px;
+        }
+        .form-group:last-child {
+            margin-right: 0;
         }
         label {
-            color: #2c3e50;
-            font-weight: 500;
-            font-size: 0.9rem;
-            min-width: 80px;
+            margin-bottom: 5px;
         }
-        input {
-            padding: 0.4rem;
+        label.block {
+            display: block;
+        }
+        input[type="number"] {
+            width: 4em;
+            padding: 8px;
+            box-sizing: border-box;
             border: 1px solid #ced4da;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            flex: 1;
-            max-width: 80px;
+        }
+        input[type="time"] {
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
         }
         .night-time-group {
             display: flex;
@@ -47,24 +119,23 @@
         }
         .button-group {
             display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-            margin-top: 1.5rem;
+            align-items: center;
         }
         button {
-            padding: 0.6rem 1.2rem;
+            padding: 10px 15px;
+            background-color: #2196F3;
+            color: #fff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
+            margin-right: 10px;
         }
-        button[type="submit"] {
+        button {
             background: seagreen;
             color: white;
         }
-        button[type="submit"]:hover {
-            background: mediumturquoise;
+        button:hover {
+            background: lightseagreen;
         }
         #reset-btn {
             background: slategray;
@@ -73,18 +144,35 @@
         #reset-btn:hover {
             background: silver;
         }
-        h1 {
-            text-align: center;
-            margin: 0 0 1.5rem 0;
-            font-size: 1.4rem;
-            color: #34495e;
-        }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>水耕スイッチ設定</h1>
+        <h1>🍀Hydroponics Switch</h1>
+        <div class="status-row">
+            <div>動作状態: <span id="operationStatus">--</span></div>
+            <div>水位: <span id="waterLevel">--</span></div>
+            <button onclick="updateStatus()">更新</button>
+        </div>
+        <hr>
+        <h2>設定変更</h2>
         <form id="settings-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>制御 ON/OFF</label>
+                    <div class="switch-container">
+                        <label class="switch">
+                            <input type="checkbox" id="inputControl">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button type="submit">保存</button>
+                    <button type="button" id="reset-btn" onclick="loadSettings()">リセット</button>
+                </div>
+            </div>
+
         <!-- 1つ目のform-row -->
         <div class="form-row">
             <div class="form-group">
@@ -100,16 +188,16 @@
         <!-- 2つ目のform-row -->
         <div class="form-row">
             <div class="form-group">
-                <label for="interval-output2-on">出力2 ON（分）</label>
-                <input type="number" id="interval-output2-on" min="1" required>
+                <label for="interval-output2-on" class="block">前半ON時間</label>
+                <input type="number" id="interval-output2-on" min="1" required> 分
             </div>
             <div class="form-group">
-                <label for="interval-output3-on">出力3 ON（分）</label>
-                <input type="number" id="interval-output3-on" min="1" required>
+                <label for="interval-output3-on" class="block">後半ON時間</label>
+                <input type="number" id="interval-output3-on" min="1" required> 分
             </div>
             <div class="form-group">
-                <label for="interval-both-off">両方OFF（分）</label>
-                <input type="number" id="interval-both-off" min="1" required>
+                <label for="interval-both-off" class="block">OFF時間</label>
+                <input type="number" id="interval-both-off" min="1" required> 分
             </div>
         </div>
 
@@ -124,18 +212,13 @@
                 </div>
             </div>
         </div>
-
-        <!-- ボタングループ -->
-        <div class="button-group">
-            <button type="submit" form="settings-form">保存</button>
-            <button type="button" id="reset-btn">リセット</button>
-        </div>
-        </div>
     </div>
 
     <script>
+        const URL_API_BASE = "http://{{server_ip}}:5000/api";
+
         const loadSettings = () => {
-            fetch("http://localhost:5000/api/settings")
+            fetch(URL_API_BASE + "/settings")
                 .then(response => response.json())
                 .then(settings => {
                     document.getElementById("start-time").value = settings.start_time;
@@ -147,14 +230,16 @@
                     document.querySelectorAll('.night-cycle-time').forEach((input, index) => {
                         input.value = settings.night_cycle_times[index] || '';
                     });
+                    document.getElementById("inputControl").checked = settings.control_enabled;
                 });
         };
 
         // 初期読み込み
         loadSettings();
+        updateStatus();
 
         // 保存処理
-        document.addEventListener('submit', e => {
+        document.getElementById('settings-form').addEventListener('submit', e => {
             e.preventDefault();
             const timeInputs = Array.from(document.querySelectorAll('.night-cycle-time'))
                 .map(input => input.value)
@@ -166,24 +251,47 @@
                 interval_output2_on: document.getElementById("interval-output2-on").value,
                 interval_output3_on: document.getElementById("interval-output3-on").value,
                 interval_both_off: document.getElementById("interval-both-off").value,
-                night_cycle_times: timeInputs
+                night_cycle_times: timeInputs,
+                control_enabled: document.getElementById("inputControl").checked
             };
 
-            fetch("http://localhost:5000/api/settings", {
+            fetch(URL_API_BASE + "/settings", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
             }).then(() => {
                 alert("設定を保存しました");
                 loadSettings();
+                updateStatus();
             });
         });
 
-        // リセット処理
-        document.getElementById("reset-btn").addEventListener("click", () => {
-            // if(confirm("現在の変更を破棄して再読み込みしますか？")) loadSettings();
-            loadSettings();
-        });
+        function updateStatus() {
+            fetch(URL_API_BASE + "/status")
+                .then(response => response.json())
+                .then(status => {
+                    const opElem = document.getElementById("operationStatus");
+                    if (status.operation === "running") {
+                        opElem.innerText = "動作中";
+                        opElem.style.color = "green";
+                    } else if (status.operation === "waiting") {
+                        opElem.innerText = "待機中";
+                        opElem.style.color = "blue";
+                    } else {
+                        opElem.innerText = "停止中";
+                        opElem.style.color = "black";
+                    }
+
+                    const wlElem = document.getElementById("waterLevel");
+                    if (status.water_level === "low") {
+                        wlElem.innerText = "低下";
+                        wlElem.style.color = "red";
+                    } else {
+                        wlElem.innerText = "正常";
+                        wlElem.style.color = "black";
+                    }
+                });
+        }
     </script>
 </body>
 </html>
