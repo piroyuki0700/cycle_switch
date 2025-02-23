@@ -22,7 +22,7 @@ OUTPUT3_PIN = 20
 OUTPUT4_PIN = 26
 
 # 水位センサーのピン
-WATER_LEVEL_PIN = 21
+WATER_LEVEL_PIN = 15
 
 # NeoPixelのピン設定
 NEOPIXEL_PIN = board.D18
@@ -60,9 +60,6 @@ def setup_logger():
     # ハンドラーをロガーに追加
     logger.addHandler(handler)
 
-def water_level_callback(channel):
-    logger.info("Water level sensor triggered: water level low.")
-
 class Controller:
     def __init__(self):
         self.running = False
@@ -81,7 +78,6 @@ class Controller:
 
         # 水位センサーの設定（リスナー登録）
         GPIO.setup(WATER_LEVEL_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.add_event_detect(WATER_LEVEL_PIN, GPIO.RISING, callback=water_level_callback, bouncetime=300)
 
     def start(self, settings):
         with self.lock:
@@ -273,20 +269,6 @@ def settings_api():
 @app.route("/api/status", methods=["GET"])
 def status_api():
     water_level = "low" if GPIO.input(WATER_LEVEL_PIN) == GPIO.HIGH else "normal"
-    # 動作状態は、controller.runningと現在時刻により判定
-    operation = "stopped"
-    now = datetime.now().time().replace(second=0, microsecond=0)
-    settings = load_settings()
-    start_time = datetime.strptime(settings["start_time"], "%H:%M").time()
-    end_time = datetime.strptime(settings["end_time"], "%H:%M").time()
-    night_times = [datetime.strptime(t, "%H:%M").time() for t in settings.get("night_cycle_times", [])]
-    if controller.running:
-        if (start_time <= now <= end_time) or (now in night_times):
-            operation = "running"
-        else:
-            operation = "waiting"
-    else:
-        operation = "stopped"
     status = {
         "operation": controller.operation_state,  # ここでフラグを返す
         "water_level": water_level,
