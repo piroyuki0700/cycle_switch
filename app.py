@@ -17,7 +17,7 @@ LOG_TO_FILE = True  # Trueならファイル出力、Falseならコンソール�
 
 # GPIOピン設定
 OUTPUT1_PIN = 6
-OUTPUT2_PIN = 13
+OUTPUT2_PIN = 19
 OUTPUT3_PIN = 20
 OUTPUT4_PIN = 26
 
