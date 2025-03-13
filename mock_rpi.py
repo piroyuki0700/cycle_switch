@@ -81,16 +81,15 @@ except ImportError:
         def setwarnings(self, flag):
             print(f"MockGPIO: setwarnings({flag})")
 
-    mock_rpi = types.ModuleType("RPi")
-    mock_rpi.GPIO = MockGPIO()
-    sys.modules["RPi"] = mock_rpi
-    sys.modules["RPi.GPIO"] = mock_rpi.GPIO
+    sys.modules["RPi"] = types.ModuleType("RPi")
+    sys.modules["RPi.GPIO"] = MockGPIO()
 
 # ---- Mock board (Adafruit) ----
 try:
     import board
 except ImportError:
     class MockBoard:
+        D5 = "D5"
         D18 = "D18"
         D21 = "D21"
         SCL = "SCL"
@@ -127,6 +126,74 @@ except ImportError:
             self.pixels = [color] * self.num_pixels
             print(f"[Mock Neo Pixel] Filled all pixels with {color}")
 
-    mock_neopixel = types.ModuleType("neopixel")
-    mock_neopixel.NeoPixel = MockNeoPixel
-    sys.modules["neopixel"] = mock_neopixel
+    sys.modules["neopixel"] = types.ModuleType("neopixel")
+    sys.modules["neopixel"].NeoPixel = MockNeoPixel
+
+# ---- Mock smbus ----
+try:
+    import smbus
+except ImportError:
+    class MockSMBus:
+        def __init__(self, bus):
+            self.bus = bus
+            print(f"[Mock smbus] SMBus({bus}) initialized")
+
+        def write_byte(self, addr, value):
+            print(f"[Mock smbus] write_byte(addr={addr}, value={value})")
+
+        def write_byte_data(self, addr, reg, value):
+            print(f"[Mock smbus] write_byte_data(addr={addr}, reg={reg}, value={value})")
+
+        def read_byte(self, addr):
+            print(f"[Mock smbus] read_byte(addr={addr})")
+            return 0x20
+
+        def read_byte_data(self, addr, reg):
+            print(f"[Mock smbus] read_byte_data(addr={addr}, reg={reg}) -> returning 0x00")
+            return 0x00  # ダミーの戻り値
+
+        def read_word_data(self, addr, reg):
+            print(f"[Mock smbus] read_word_data(addr={addr}, reg={reg}) -> returning 0x0000")
+            return 0x0000  # ダミーの戻り値
+
+        def write_i2c_block_data(self, addr, reg, data):
+            print(f"[Mock smbus] write_i2c_block_data(addr={addr}, reg={reg}, data={data})")
+
+        def read_i2c_block_data(self, addr, reg, length):
+            print(f"[Mock smbus] read_i2c_block_data(addr={addr}, reg={reg}, length={length}) -> returning {length} zeros")
+            return [0x00] * length  # 指定された長さのゼロのリストを返す
+
+    sys.modules["smbus"] = types.ModuleType("smbus")
+    sys.modules["smbus"].SMBus = MockSMBus
+
+    # ---- Mock adafruit_dht ----
+try:
+    import adafruit_dht
+except ImportError:
+    class MockAdafruitDHT:
+        DHT11 = "DHT11"
+        DHT22 = "DHT22"
+
+        def __init__(self, sensor, pin):
+            self.sensor = sensor
+            self.pin = pin
+            print(f"MockAdafruitDHT: Initialized {sensor} on pin {pin}")
+
+        @property
+        def temperature(self):
+            print(f"MockAdafruitDHT: Reading temperature")
+            return 25.0  # Mock temperature
+
+        @property
+        def humidity(self):
+            print(f"MockAdafruitDHT: Reading humidity")
+            return 50.0  # Mock humidity
+
+
+    sys.modules["adafruit_dht"] = types.ModuleType("adafruit_dht")
+#    sys.modules["adafruit_dht"].DHT11 = MockAdafruitDHT.DHT11
+#    sys.modules["adafruit_dht"].DHT22 = MockAdafruitDHT.DHT22
+    sys.modules["adafruit_dht"].DHT11 = lambda pin: MockAdafruitDHT(MockAdafruitDHT.DHT11, pin)
+    sys.modules["adafruit_dht"].DHT22 = lambda pin: MockAdafruitDHT(MockAdafruitDHT.DHT22, pin)
+    sys.modules["adafruit_dht"].DHT = MockAdafruitDHT
+

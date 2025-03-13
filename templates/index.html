@@ -85,7 +85,7 @@
             margin-bottom: 15px;
         }
         /* 制御スイッチ専用（ラベルは上段、スイッチは下段） */
-        .switch-container {
+        .block-container {
             display: block;
             margin-top: 5px;
         }
@@ -95,6 +95,11 @@
         }
         .form-group:last-child {
             margin-right: 0;
+        }
+        .labeled-value {
+            flex: 1;
+            margin-right: 10px;
+            text-align: center;
         }
         label {
             margin-bottom: 5px;
@@ -154,13 +159,35 @@
             <div>水位: <span id="waterLevel">--</span></div>
             <button onclick="updateStatus()">更新</button>
         </div>
+        <div class="status-row">
+            <div class="labeled-value">
+                <label>気温</label>
+                <div class="block-container"><span id="currentTemp">--</span> °C</div>
+            </div>
+            <div class="labeled-value">
+                <label>湿度</label>
+                <div class="block-container"><span id="currentHumid">--</span> %</div>
+            </div>
+            <div class="labeled-value">
+                <label>水温</label>
+                <div class="block-container"><span id="currentWaterTemp">--</span> °C</div>
+            </div>
+            <div class="labeled-value">
+                <label>濃度</label>
+                <div class="block-container">EC <span id="currentEC">--</span></div>
+            </div>
+            <div class="labeled-value">
+                <label>明るさ</label>
+                <div class="block-container"><span id="currentBrightness">--</span></div>
+            </div>
+        </div>
         <hr>
         <h2>設定変更</h2>
         <form id="settings-form">
             <div class="form-row">
                 <div class="form-group">
                     <label>制御 ON/OFF</label>
-                    <div class="switch-container">
+                    <div class="block-container">
                         <label class="switch">
                             <input type="checkbox" id="inputControl">
                             <span class="slider"></span>
@@ -267,6 +294,11 @@
         });
 
         function updateStatus() {
+            document.getElementById("currentTemp").innerText = "--";
+            document.getElementById("currentHumid").innerText = "--";
+            document.getElementById("currentWaterTemp").innerText = "--";
+            document.getElementById("currentEC").innerText = "--";
+            document.getElementById("currentBrightness").innerText = "--";
             fetch(URL_API_BASE + "/status")
                 .then(response => response.json())
                 .then(status => {
@@ -290,6 +322,12 @@
                         wlElem.innerText = "正常";
                         wlElem.style.color = "black";
                     }
+
+                    document.getElementById("currentTemp").innerText = status.temperature;
+                    document.getElementById("currentHumid").innerText = status.humidity;
+                    document.getElementById("currentWaterTemp").innerText = status.water_temp.toFixed(1);
+                    document.getElementById("currentEC").innerText = status.ec_value.toFixed(2);
+                    document.getElementById("currentBrightness").innerText = status.brightness;
                 });
         }
     </script>

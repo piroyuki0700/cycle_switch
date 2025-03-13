@@ -8,9 +8,12 @@ import mock_rpi
 import RPi.GPIO as GPIO
 import neopixel
 import board
+import adafruit_dht
+import smbus
 import logging
 import socket
 
+RETRY_COUNT = 5
 SETTINGS_FILE = "settings.json"
 LOG_FILE = "cycle_switch.log"
 LOG_TO_FILE = True  # Trueならファイル出力、Falseならコンソール出力
@@ -26,6 +29,19 @@ WATER_LEVEL_PIN = 15
 
 # NeoPixelのピン設定
 NEOPIXEL_PIN = board.D18
+
+# DHT11センサーの設定
+dht_device = adafruit_dht.DHT11(board.D5, use_pulseio=False)  # GPIO5を使用
+
+# 温度センサーのデバイスファイル
+DS18B20_DEVICE = "/sys/bus/w1/devices/28-01204c43b99b/w1_slave"
+
+# PCF8591 の I2C アドレス（通常は 0x48）
+I2C_ADDR = 0x48
+bus = smbus.SMBus(1)
+# 定数設定
+VREF = 3.3      # ADC基準電圧
+EC_FACTOR = 1.0 # EC補正係数（キャリブレーションが必要）
 
 # 定数定義（control_enabledを追加）
 DEFAULT_SETTINGS = {
@@ -237,8 +253,57 @@ def save_settings(new_settings):
     else:
         controller.stop()
 
-# Flaskアプリケーション設定
-app = Flask(__name__)
+# DS18B20から温度を読み取る関数
+def read_temperature():
+    try:
+        with open(DS18B20_DEVICE, 'r') as f:
+            lines = f.readlines()
+        # 最初の行に"YES"があれば読み取り成功
+        if lines[0].strip()[-3:] != "YES":
+            return None
+        equals_pos = lines[1].find("t=")
+        if equals_pos != -1:
+            temp_string = lines[1][equals_pos+2:]
+            temperature = float(temp_string) / 1000.0
+            return temperature
+    except Exception as e:
+        logger.info("温度センサー読み取りエラー: " + str(e))
+        return None
+
+def read_adc(channel=0):
+    """
+    PCF8591の指定チャンネルからアナログ値を取得（0-255の値を返す）
+    PCF8591は最初の読み出しが不正確な場合があるため、ダミーリードを行います。
+    """
+    bus.write_byte(I2C_ADDR, channel)
+    bus.read_byte(I2C_ADDR)  # ダミーリード
+    value = bus.read_byte(I2C_ADDR)
+    return value
+
+def get_ec(temperature=25):
+    """
+    AIN0チャンネルからTDSセンサー（EC測定用）の値を取得し、
+    温度補正を加えたEC値（電気伝導率）を計算して返します。
+    """
+    raw_value = read_adc(channel=0)  # AIN0から値を取得
+    voltage = (raw_value / 255.0) * VREF  # 電圧に変換
+    # 簡易的なEC計算（温度補正付き）
+    ec_value = (voltage / VREF) * EC_FACTOR * (1.0 + 0.02 * (temperature - 25))
+    # return round(ec_value, 3), round(voltage, 3)
+    return ec_value # round(ec_value, 3)
+
+def get_brightness():
+    """
+    PCF8591モジュール内蔵の照度センサー（AIN1チャンネル接続）の値を取得します。
+
+    生のADC値および電圧から、仮の換算式（電圧×100）で照度(lux)を計算します。
+    ※実際の換算はセンサーや回路の特性に合わせたキャリブレーションが必要です。
+    """
+    raw_value = read_adc(channel=1)  # 内蔵照度センサーはAIN1チャンネルに接続
+    voltage = (raw_value / 255.0) * VREF
+    lux = voltage * 100  # 仮の換算式（例：1V=100lux）
+    # return raw_value, round(voltage, 3), round(lux, 3)
+    return raw_value
 
 # サーバーのローカルIPアドレスを取得
 def get_local_ip():
@@ -250,6 +315,9 @@ def get_local_ip():
     except Exception as e:
         print(f"IPアドレス取得エラー: {e}")
         return "127.0.0.1"
+
+# Flaskアプリケーション設定
+app = Flask(__name__)
 
 # ルート：HTML画面の表示
 @app.route('/')
@@ -269,9 +337,27 @@ def settings_api():
 @app.route("/api/status", methods=["GET"])
 def status_api():
     water_level = "low" if GPIO.input(WATER_LEVEL_PIN) == GPIO.HIGH else "normal"
+
+    for i in range(RETRY_COUNT):
+        try:
+            temperature = dht_device.temperature
+            humidity = dht_device.humidity
+            break
+        except RuntimeError:
+            pass
+
+    water_temp = read_temperature()
+    ec_value = get_ec(water_temp)
+    brightness = get_brightness()
+
     status = {
         "operation": controller.operation_state,  # ここでフラグを返す
         "water_level": water_level,
+        "humidity": humidity,
+        "temperature": temperature,
+        "water_temp": water_temp,
+        "ec_value": ec_value,
+        "brightness": brightness,
         "control_enabled": controller.control_enabled
     }
     return jsonify(status)
