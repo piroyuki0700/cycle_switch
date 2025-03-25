@@ -40,8 +40,11 @@ DS18B20_DEVICE = "/sys/bus/w1/devices/28-01204c43b99b/w1_slave"
 I2C_ADDR = 0x48
 bus = smbus.SMBus(1)
 # 定数設定
-VREF = 3.3      # ADC基準電圧
-EC_FACTOR = 1.0 # EC補正係数（キャリブレーションが必要）
+VREF = 5  # PCF8591のリファレンス電圧
+ADCRANGE = 255  # PCF8591は8ビットADC
+KVALUE = 1.0  # 校正係数（必要に応じて調整）
+TDS_FACTOR = 500  # TDSからECへの変換係数
+TEMP_COEFF = 0.02  # 温度補正係数（2% / ℃）
 
 # 定数定義（control_enabledを追加）
 DEFAULT_SETTINGS = {
@@ -276,34 +279,33 @@ def read_adc(channel=0):
     PCF8591は最初の読み出しが不正確な場合があるため、ダミーリードを行います。
     """
     bus.write_byte(I2C_ADDR, channel)
+    time.sleep(0.1)
     bus.read_byte(I2C_ADDR)  # ダミーリード
     value = bus.read_byte(I2C_ADDR)
-    return value
+    return value * VREF / ADCRANGE # 電圧に変換
 
 def get_ec(temperature=25):
     """
-    AIN0チャンネルからTDSセンサー（EC測定用）の値を取得し、
+    AIN3チャンネルからTDSセンサー（EC測定用）の値を取得し、
     温度補正を加えたEC値（電気伝導率）を計算して返します。
+    https://wiki.keyestudio.com/KS0429_keyestudio_TDS_Meter_V1.0
     """
-    raw_value = read_adc(channel=0)  # AIN0から値を取得
-    voltage = (raw_value / 255.0) * VREF  # 電圧に変換
-    # 簡易的なEC計算（温度補正付き）
-    ec_value = (voltage / VREF) * EC_FACTOR * (1.0 + 0.02 * (temperature - 25))
-    # return round(ec_value, 3), round(voltage, 3)
-    return ec_value # round(ec_value, 3)
+    raw_voltage = read_adc(channel=2)  # AIN2から値を取得
+    voltage = raw_voltage / (1.0+0.02*(temperature-25.0))
+    ecValue = (133.42*voltage**3 - 255.86*voltage**2 + 857.39*voltage) / 500
+    return ecValue
 
 def get_brightness():
     """
-    PCF8591モジュール内蔵の照度センサー（AIN1チャンネル接続）の値を取得します。
+    PCF8591モジュール内蔵の照度センサー（AIN0チャンネル接続）の値を取得します。
 
     生のADC値および電圧から、仮の換算式（電圧×100）で照度(lux)を計算します。
     ※実際の換算はセンサーや回路の特性に合わせたキャリブレーションが必要です。
     """
-    raw_value = read_adc(channel=1)  # 内蔵照度センサーはAIN1チャンネルに接続
-    voltage = (raw_value / 255.0) * VREF
-    lux = voltage * 100  # 仮の換算式（例：1V=100lux）
+    voltage = read_adc(channel=0)  # 内蔵照度センサーはAIN0チャンネルに接続
+    lux = (VREF - voltage) * 100  # 仮の換算式（例：1V=100lux）
     # return raw_value, round(voltage, 3), round(lux, 3)
-    return raw_value
+    return int(lux) 
 
 # サーバーのローカルIPアドレスを取得
 def get_local_ip():
@@ -380,3 +382,5 @@ if __name__ == "__main__":
         controller.stop()
         GPIO.cleanup()
         logger.info("GPIO cleaned up")
+        bus.close()
+
