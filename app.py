@@ -180,17 +180,19 @@ class Controller:
                 break
 
             # 出力2と3の交互制御
-            GPIO.output(OUTPUT2_PIN, GPIO.HIGH)
-            if self.exit_event.wait(settings["interval_output2_on"] * 60):
-                break
-            GPIO.output(OUTPUT2_PIN, GPIO.LOW)
+            if settings["interval_output2_on"] > 0:
+                GPIO.output(OUTPUT2_PIN, GPIO.HIGH)
+                if self.exit_event.wait(settings["interval_output2_on"] * 60):
+                    break
+                GPIO.output(OUTPUT2_PIN, GPIO.LOW)
     
-            GPIO.output(OUTPUT3_PIN, GPIO.HIGH)
-            GPIO.output(OUTPUT4_PIN, GPIO.HIGH)
-            if self.exit_event.wait(settings["interval_output3_on"] * 60):
-                break
-            GPIO.output(OUTPUT3_PIN, GPIO.LOW)
-            GPIO.output(OUTPUT4_PIN, GPIO.LOW)
+            if settings["interval_output3_on"] > 0:
+                GPIO.output(OUTPUT3_PIN, GPIO.HIGH)
+                GPIO.output(OUTPUT4_PIN, GPIO.HIGH)
+                if self.exit_event.wait(settings["interval_output3_on"] * 60):
+                    break
+                GPIO.output(OUTPUT3_PIN, GPIO.LOW)
+                GPIO.output(OUTPUT4_PIN, GPIO.LOW)
 
             # 夜間モードの場合は1サイクルのみ実行
             if now in night_times:
@@ -246,6 +248,8 @@ def save_settings(new_settings):
         "night_cycle_times": [t for t in new_settings.get("night_cycle_times", []) if t][:3],
         "control_enabled": new_settings.get("control_enabled", True)
     })
+    if settings.get("interval_output2_on") <= 0 and settings.get("interval_output3_on") <= 0 and settings.get("interval_both_off") <= 0:
+        settings["control_enabled"] = False
     
     with open(SETTINGS_FILE, "w") as f:
         json.dump(settings, f, indent=4)
