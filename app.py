@@ -19,10 +19,12 @@ LOG_FILE = "cycle_switch.log"
 LOG_TO_FILE = True  # Trueならファイル出力、Falseならコンソール出力
 
 # GPIOピン設定
-OUTPUT1_PIN = 6
-OUTPUT2_PIN = 19
-OUTPUT3_PIN = 20
-OUTPUT4_PIN = 26
+OUTPUT_SSR1 = 6
+OUTPUT_SSR2 = 13
+OUTPUT_USB_LEFT_TOP = 20
+OUTPUT_USB_LEFT_BOTTOM = 26
+OUTPUT_USB_RIGHT_TOP = 16
+OUTPUT_USB_RIGHT_BOTTOM = 19
 
 # 水位センサーのピン
 WATER_LEVEL_PIN = 15
@@ -89,10 +91,11 @@ class Controller:
         self.control_enabled = False  # 全体制御ON/OFF状態
         self.operation_state = "stopped"  # "running", "waiting", "stopped"
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(OUTPUT1_PIN, GPIO.OUT)
-        GPIO.setup(OUTPUT2_PIN, GPIO.OUT)
-        GPIO.setup(OUTPUT3_PIN, GPIO.OUT)
-        GPIO.setup(OUTPUT4_PIN, GPIO.OUT)
+        GPIO.setup(OUTPUT_SSR1, GPIO.OUT)
+        GPIO.setup(OUTPUT_USB_LEFT_TOP, GPIO.OUT)
+        GPIO.setup(OUTPUT_USB_LEFT_BOTTOM, GPIO.OUT)
+        GPIO.setup(OUTPUT_USB_RIGHT_TOP, GPIO.OUT)
+        GPIO.setup(OUTPUT_USB_RIGHT_BOTTOM, GPIO.OUT)
         self.stop_outputs()
 
         # 水位センサーの設定（リスナー登録）
@@ -126,10 +129,11 @@ class Controller:
             logger.info("Controller stopped.")
 
     def stop_outputs(self):
-        GPIO.output(OUTPUT1_PIN, GPIO.LOW)
-        GPIO.output(OUTPUT2_PIN, GPIO.LOW)
-        GPIO.output(OUTPUT3_PIN, GPIO.LOW)
-        GPIO.output(OUTPUT4_PIN, GPIO.LOW)
+        GPIO.output(OUTPUT_SSR1, GPIO.LOW)
+        GPIO.output(OUTPUT_USB_LEFT_TOP, GPIO.LOW)
+        GPIO.output(OUTPUT_USB_LEFT_BOTTOM, GPIO.LOW)
+        GPIO.output(OUTPUT_USB_RIGHT_TOP, GPIO.LOW)
+        GPIO.output(OUTPUT_USB_RIGHT_BOTTOM, GPIO.LOW)
 
     def parse_time(self, time_str):
         return datetime.strptime(time_str, "%H:%M").time()
@@ -172,7 +176,7 @@ class Controller:
                 break
 
     def run_main_cycle(self, settings, start_time, end_time, night_times):
-        GPIO.output(OUTPUT1_PIN, GPIO.HIGH)
+        GPIO.output(OUTPUT_SSR1, GPIO.HIGH)
 
         while self.running and not self.exit_event.is_set():
             now = datetime.now().time().replace(second=0, microsecond=0)
@@ -181,18 +185,20 @@ class Controller:
 
             # 出力2と3の交互制御
             if settings["interval_output2_on"] > 0:
-                GPIO.output(OUTPUT2_PIN, GPIO.HIGH)
+                GPIO.output(OUTPUT_USB_LEFT_TOP, GPIO.HIGH)
+                GPIO.output(OUTPUT_USB_LEFT_BOTTOM, GPIO.HIGH)
                 if self.exit_event.wait(settings["interval_output2_on"] * 60):
                     break
-                GPIO.output(OUTPUT2_PIN, GPIO.LOW)
+                GPIO.output(OUTPUT_USB_LEFT_TOP, GPIO.LOW)
+                GPIO.output(OUTPUT_USB_LEFT_BOTTOM, GPIO.LOW)
     
             if settings["interval_output3_on"] > 0:
-                GPIO.output(OUTPUT3_PIN, GPIO.HIGH)
-                GPIO.output(OUTPUT4_PIN, GPIO.HIGH)
+                GPIO.output(OUTPUT_USB_RIGHT_TOP, GPIO.HIGH)
+                GPIO.output(OUTPUT_USB_RIGHT_BOTTOM, GPIO.HIGH)
                 if self.exit_event.wait(settings["interval_output3_on"] * 60):
                     break
-                GPIO.output(OUTPUT3_PIN, GPIO.LOW)
-                GPIO.output(OUTPUT4_PIN, GPIO.LOW)
+                GPIO.output(OUTPUT_USB_RIGHT_TOP, GPIO.LOW)
+                GPIO.output(OUTPUT_USB_RIGHT_BOTTOM, GPIO.LOW)
 
             # 夜間モードの場合は1サイクルのみ実行
             if now in night_times:
@@ -201,7 +207,7 @@ class Controller:
             if self.exit_event.wait(settings["interval_both_off"] * 60):
                 break
 
-        GPIO.output(OUTPUT1_PIN, GPIO.LOW)
+        GPIO.output(OUTPUT_SSR1, GPIO.LOW)
 
 # コントローラーの初期化
 controller = Controller()
